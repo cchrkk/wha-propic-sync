@@ -15,6 +15,8 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+let syncProgress = null;
+
 app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '../dist')));
@@ -93,12 +95,21 @@ app.post('/api/sync', async (_req, res) => {
     if (!whatsappSocket) {
       return res.status(400).json({ error: 'WhatsApp non connesso' });
     }
-    const report = await syncContactProfilePhotos({ peopleService, whatsappSocket });
+    syncProgress = { current: 0, total: 0, message: 'Inizializzazione...' };
+    const report = await syncContactProfilePhotos({ peopleService, whatsappSocket }, (progress) => {
+      syncProgress = progress;
+    });
+    syncProgress = null;
     res.json(report);
   } catch (err) {
     console.error('Errore sincronizzazione:', err);
+    syncProgress = null;
     res.status(500).json({ error: err.message || 'Errore sincronizzazione' });
   }
+});
+
+app.get('/api/sync/progress', (_req, res) => {
+  res.json(syncProgress || { current: 0, total: 0, message: 'Nessuna sincronizzazione in corso' });
 });
 
 app.get('*', (req, res) => {

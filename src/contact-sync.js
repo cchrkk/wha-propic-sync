@@ -70,11 +70,11 @@ export const listContactsPreview = async ({ peopleService, whatsappSocket }) => 
   return {
     totalContacts: contacts.length,
     contactsWithPhoto: photosFound,
-    preview: preview.slice(0, 50)
+    preview
   };
 };
 
-export const syncContactProfilePhotos = async ({ peopleService, whatsappSocket }) => {
+export const syncContactProfilePhotos = async ({ peopleService, whatsappSocket }, onProgress = () => {}) => {
   const contacts = await loadAllContacts(peopleService);
   const report = {
     totalContacts: contacts.length,
@@ -84,16 +84,21 @@ export const syncContactProfilePhotos = async ({ peopleService, whatsappSocket }
     errors: []
   };
 
-  for (const contact of contacts) {
+  onProgress({ current: 0, total: contacts.length, message: 'Inizializzazione sincronizzazione...' });
+
+  for (let i = 0; i < contacts.length; i++) {
+    const contact = contacts[i];
     const jid = formatWhatsAppJid(contact.phone);
     if (!jid) {
       report.skippedInvalidPhone += 1;
+      onProgress({ current: i + 1, total: contacts.length, message: `Elaborato ${i + 1}/${contacts.length}: numero non valido` });
       continue;
     }
 
     const profileImageUrl = await whatsappSocket.profilePictureUrl(jid, 'image').catch(() => null);
     if (!profileImageUrl) {
       report.skippedNoPhoto += 1;
+      onProgress({ current: i + 1, total: contacts.length, message: `Elaborato ${i + 1}/${contacts.length}: nessuna foto` });
       continue;
     }
 
@@ -101,6 +106,7 @@ export const syncContactProfilePhotos = async ({ peopleService, whatsappSocket }
       const imageResponse = await fetch(profileImageUrl);
       if (!imageResponse.ok) {
         report.errors.push({ contact: contact.name, reason: `Download fallito ${imageResponse.status}` });
+        onProgress({ current: i + 1, total: contacts.length, message: `Elaborato ${i + 1}/${contacts.length}: errore download` });
         continue;
       }
 
@@ -111,10 +117,13 @@ export const syncContactProfilePhotos = async ({ peopleService, whatsappSocket }
         requestBody: { photoBytes }
       });
       report.updated += 1;
+      onProgress({ current: i + 1, total: contacts.length, message: `Aggiornato ${report.updated}/${contacts.length} contatti` });
     } catch (error) {
       report.errors.push({ contact: contact.name, reason: error.message || 'Errore aggiornamento foto' });
+      onProgress({ current: i + 1, total: contacts.length, message: `Elaborato ${i + 1}/${contacts.length}: errore aggiornamento` });
     }
   }
 
+  onProgress({ current: contacts.length, total: contacts.length, message: 'Sincronizzazione completata' });
   return report;
 };

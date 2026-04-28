@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  wha-propic-sync:
+    build: .
+    ports:
+      - "3000:3000"  # Backend API
+      - "5173:5173"  # Frontend dev server
+    environment:
+      - NODE_ENV=production
+    volumes:
+      # Persist WhatsApp session and Google tokens
+      - ./whatsapp-session:/app/whatsapp-session
+      - ./tokens.json:/app/tokens.json
+    env_file:
+      - .env
+    restart: unless-stopped

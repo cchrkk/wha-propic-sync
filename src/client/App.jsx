@@ -23,7 +23,10 @@ export default function App() {
   const [googleAuthorized, setGoogleAuthorized] = useState(false);
   const [whatsappState, setWhatsappState] = useState({ status: 'disconnected', qrDataUrl: null });
   const [preview, setPreview] = useState(null);
+  const [report, setReport] = useState(null);
   const [syncProgress, setSyncProgress] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState('');
 
   useEffect(() => {
     refreshStatus();
@@ -33,7 +36,7 @@ export default function App() {
 
   useEffect(() => {
     let interval;
-    if (loading && message === 'Eseguo la sincronizzazione...') {
+    if (loading && message === 'Starting synchronization...') {
       interval = setInterval(async () => {
         try {
           const progress = await fetchJson('/api/sync/progress');
@@ -42,7 +45,7 @@ export default function App() {
             setSyncProgress(null);
           }
         } catch (error) {
-          console.error('Errore nel progresso:', error);
+          console.error('Error in progress:', error);
         }
       }, 1000);
     } else {

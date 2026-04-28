@@ -1,0 +1,33 @@
+{
+  "name": "wha-propic-sync",
+  "version": "0.1.0",
+  "description": "Sync WhatsApp profile pictures to Google Contacts",
+  "main": "src/index.js",
+  "type": "module",
+  "scripts": {
+    "dev": "concurrently \"npm run dev:server\" \"npm run dev:ui\"",
+    "dev:server": "nodemon --watch src --exec node src/index.js",
+    "dev:ui": "vite",
+    "build": "vite build",
+    "start": "node src/index.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "@whiskeysockets/baileys": "^7.0.0-rc.9",
+    "cors": "^2.8.5",
+    "dotenv": "^16.0.0",
+    "express": "^4.18.2",
+    "googleapis": "^121.0.0",
+    "qrcode": "^1.5.1"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.0",
+    "concurrently": "^8.2.0",
+    "nodemon": "^3.0.1",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "vite": "^5.4.1"
+  }
+}

@@ -7,7 +7,7 @@ Sync WhatsApp profile pictures to your Google Contacts automatically! 🚀
 This app connects to your WhatsApp and Google accounts to automatically update contact photos in Google Contacts with the latest WhatsApp profile pictures.
 
 
-
+(100% VIBE CODED PROJECT)
 ## ✨ Features
 
 - 🔐 Secure OAuth authentication for Google

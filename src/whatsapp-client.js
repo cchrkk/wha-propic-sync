@@ -8,6 +8,7 @@ const authFolder = `${__dirname}/../whatsapp-session`;
 let sock = null;
 let connectionState = 'disconnected';
 let lastQr = null;
+let lastDisconnectInfo = null;
 
 export const startWhatsApp = async ({ onQr } = {}) => {
   console.log('Inizio connessione WhatsApp...');
@@ -37,12 +38,13 @@ export const startWhatsApp = async ({ onQr } = {}) => {
   });
 
   socket.ev.on('connection.update', async (update) => {
-    console.log('WhatsApp connection.update:', JSON.stringify(update));
+    console.log('WhatsApp connection.update:', JSON.stringify(update, null, 2));
 
     const { connection, lastDisconnect, qr } = update;
     if (qr) {
       lastQr = qr;
       connectionState = 'qr';
+      lastDisconnectInfo = null;
       if (typeof onQr === 'function') {
         onQr(qr);
       }
@@ -52,18 +54,22 @@ export const startWhatsApp = async ({ onQr } = {}) => {
       const statusCode = lastDisconnect?.error?.output?.statusCode;
       const statusReason = lastDisconnect?.error?.output?.payload?.message || lastDisconnect?.error?.message;
       console.error('WhatsApp connection closed:', statusCode, statusReason);
+      lastDisconnectInfo = {
+        statusCode,
+        statusReason: statusReason || 'Unknown reason',
+        raw: lastDisconnect
+      };
+      connectionState = 'disconnected';
       if (statusCode === DisconnectReason.loggedOut) {
-        connectionState = 'disconnected';
         sock = null;
         console.log('Sessione WhatsApp disconnessa (logout).');
-      } else {
-        connectionState = 'disconnected';
       }
     }
 
     if (connection === 'open') {
       connectionState = 'open';
       lastQr = null;
+      lastDisconnectInfo = null;
       console.log('WhatsApp connesso correttamente.');
     }
   });
@@ -74,7 +80,8 @@ export const startWhatsApp = async ({ onQr } = {}) => {
 
 export const getWhatsAppState = () => ({
   status: connectionState,
-  qr: lastQr
+  qr: lastQr,
+  lastDisconnect: lastDisconnectInfo
 });
 
 export const getWhatsAppSocket = () => sock;

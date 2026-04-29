@@ -3,6 +3,7 @@ import express from 'express';
 import path from 'path';
 import cors from 'cors';
 import { fileURLToPath } from 'url';
+import { rm } from 'fs/promises';
 import { authorizeGoogle, getAuthUrl, exchangeCodeForTokens, getPeopleService, hasSavedGoogleTokens } from './google-auth.js';
 import { startWhatsApp, getWhatsAppState, getWhatsAppSocket } from './whatsapp-client.js';
 import { listContactsPreview, syncContactProfilePhotos } from './contact-sync.js';
@@ -76,6 +77,18 @@ app.post('/api/whatsapp/connect', async (_req, res) => {
   } catch (err) {
     console.error('Errore connessione WhatsApp:', err);
     res.status(500).json({ error: err.message || 'Errore WhatsApp' });
+  }
+});
+
+app.post('/api/whatsapp/reset', async (_req, res) => {
+  try {
+    const sessionPath = path.join(__dirname, '../whatsapp-session');
+    await rm(sessionPath, { recursive: true, force: true });
+    console.log('Sessione WhatsApp resettata.');
+    return res.json({ message: 'Sessione WhatsApp resettata. Riavvia la connessione.' });
+  } catch (err) {
+    console.error('Errore reset sessione WhatsApp:', err);
+    res.status(500).json({ error: err.message || 'Errore reset sessione' });
   }
 });
 

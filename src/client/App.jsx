@@ -122,6 +122,20 @@ export default function App() {
     }
   };
 
+  const handleResetWhatsApp = async () => {
+    setLoading(true);
+    setMessage('Resetting WhatsApp session...');
+    try {
+      const result = await fetchJson('/api/whatsapp/reset', { method: 'POST' });
+      setMessage(result.message);
+      await refreshStatus();
+    } catch (error) {
+      setMessage(error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <main className="app-shell">
       <header>
@@ -139,6 +153,11 @@ export default function App() {
             <strong>WhatsApp:</strong> <StatusBadge status={whatsappState.status} />
           </div>
         </div>
+        {whatsappState.lastDisconnect && (
+          <div className="disconnect-reason">
+            <strong>Disconnect reason:</strong> {whatsappState.lastDisconnect.statusReason}
+          </div>
+        )}
         {whatsappState.qrDataUrl && (
           <div className="qr-panel">
             <p>Scan the QR code with WhatsApp to authorize the connection.</p>
@@ -159,6 +178,9 @@ export default function App() {
         </button>
         <button disabled={loading || whatsappState.status !== 'open'} onClick={handleSync}>
           Start Sync
+        </button>
+        <button disabled={loading} onClick={handleResetWhatsApp}>
+          Reset WhatsApp Session
         </button>
       </section>
 

@@ -10,7 +10,9 @@ let connectionState = 'disconnected';
 let lastQr = null;
 
 export const startWhatsApp = async ({ onQr } = {}) => {
+  console.log('Inizio connessione WhatsApp...');
   if (sock && connectionState === 'open') {
+    console.log('WhatsApp socket già connesso.');
     return sock;
   }
 
@@ -19,14 +21,25 @@ export const startWhatsApp = async ({ onQr } = {}) => {
 
   connectionState = 'connecting';
   const socket = makeWASocket({
-    logger: pino({ level: 'silent' }),
+    logger: pino({ level: process.env.WHATSAPP_LOG_LEVEL || 'info' }),
     printQRInTerminal: false,
     auth: state,
     version
   });
 
-  socket.ev.on('creds.update', saveCreds);
-  socket.ev.on('connection.update', async ({ connection, lastDisconnect, qr }) => {
+  socket.ev.on('creds.update', async (creds) => {
+    try {
+      await saveCreds(creds);
+      console.log('Credenziali WhatsApp aggiornate.');
+    } catch (saveError) {
+      console.error('Errore salvataggio credenziali WhatsApp:', saveError);
+    }
+  });
+
+  socket.ev.on('connection.update', async (update) => {
+    console.log('WhatsApp connection.update:', JSON.stringify(update));
+
+    const { connection, lastDisconnect, qr } = update;
     if (qr) {
       lastQr = qr;
       connectionState = 'qr';
@@ -37,9 +50,12 @@ export const startWhatsApp = async ({ onQr } = {}) => {
 
     if (connection === 'close') {
       const statusCode = lastDisconnect?.error?.output?.statusCode;
+      const statusReason = lastDisconnect?.error?.output?.payload?.message || lastDisconnect?.error?.message;
+      console.error('WhatsApp connection closed:', statusCode, statusReason);
       if (statusCode === DisconnectReason.loggedOut) {
         connectionState = 'disconnected';
         sock = null;
+        console.log('Sessione WhatsApp disconnessa (logout).');
       } else {
         connectionState = 'disconnected';
       }

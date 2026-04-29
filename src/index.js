@@ -64,8 +64,10 @@ app.get('/api/whatsapp/status', async (_req, res) => {
 
 app.post('/api/whatsapp/connect', async (_req, res) => {
   try {
+    console.log('API /api/whatsapp/connect chiamata.');
     await startWhatsApp();
     const state = getWhatsAppState();
+    console.log('Stato WhatsApp dopo connect:', state);
     if (state.qr) {
       const qrDataUrl = await qrcode.toDataURL(state.qr);
       return res.json({ ...state, qrDataUrl });

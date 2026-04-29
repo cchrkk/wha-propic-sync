@@ -9,6 +9,24 @@ let sock = null;
 let connectionState = 'disconnected';
 let lastQr = null;
 let lastDisconnectInfo = null;
+let reconnecting = false;
+
+const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const handleReconnect = async ({ onQr } = {}) => {
+  if (reconnecting) return;
+  reconnecting = true;
+  console.log('Riavvio WhatsApp in corso dopo errore di stream...');
+  await delay(1000);
+  try {
+    sock = null;
+    await startWhatsApp({ onQr });
+  } catch (error) {
+    console.error('Errore durante il tentativo di riconnessione WhatsApp:', error);
+  } finally {
+    reconnecting = false;
+  }
+};
 
 export const startWhatsApp = async ({ onQr } = {}) => {
   console.log('Inizio connessione WhatsApp...');
@@ -60,9 +78,15 @@ export const startWhatsApp = async ({ onQr } = {}) => {
         raw: lastDisconnect
       };
       connectionState = 'disconnected';
+      sock = null;
       if (statusCode === DisconnectReason.loggedOut) {
-        sock = null;
         console.log('Sessione WhatsApp disconnessa (logout).');
+      } else if (statusCode === DisconnectReason.restartRequired) {
+        console.log('Stream Errored (restart required): avvio riconnessione automatica.');
+        await handleReconnect({ onQr });
+      } else {
+        console.log('Disconnessione WhatsApp non definitiva, verrà tentata una nuova connessione.');
+        await handleReconnect({ onQr });
       }
     }
 

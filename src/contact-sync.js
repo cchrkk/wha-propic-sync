@@ -6,6 +6,16 @@ const getDisplayName = (person) => {
   return person.names?.[0]?.displayName || 'Contatto senza nome';
 };
 
+const fetchWithTimeout = async (url, timeoutMs = 15000) => {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { signal: controller.signal });
+  } finally {
+    clearTimeout(timeoutId);
+  }
+};
+
 const formatWhatsAppJid = (phoneNumber) => {
   const cleaned = phoneNumber.replace(/[^0-9+]/g, '');
   if (!cleaned) return null;
@@ -102,8 +112,10 @@ export const syncContactProfilePhotos = async ({ peopleService, whatsappSocket }
       continue;
     }
 
+    console.log(`Sincronizzazione contatto ${i + 1}/${contacts.length}: ${contact.name} (${contact.phone})`);
+
     try {
-      const imageResponse = await fetch(profileImageUrl);
+      const imageResponse = await fetchWithTimeout(profileImageUrl, Number(process.env.PROFILE_FETCH_TIMEOUT_MS || 15000));
       if (!imageResponse.ok) {
         report.errors.push({ contact: contact.name, reason: `Download fallito ${imageResponse.status}` });
         onProgress({ current: i + 1, total: contacts.length, message: `Elaborato ${i + 1}/${contacts.length}: errore download` });
@@ -117,9 +129,13 @@ export const syncContactProfilePhotos = async ({ peopleService, whatsappSocket }
         requestBody: { photoBytes }
       });
       report.updated += 1;
-      onProgress({ current: i + 1, total: contacts.length, message: `Aggiornato ${report.updated}/${contacts.length} contatti` });
+      onProgress({ current: i + 1, total: contacts.length, message: `Elaborato ${i + 1}/${contacts.length}: aggiornato ${report.updated}` });
     } catch (error) {
-      report.errors.push({ contact: contact.name, reason: error.message || 'Errore aggiornamento foto' });
+      const errorMessage = error.name === 'AbortError'
+        ? `Timeout download ${profileImageUrl}`
+        : error.message || 'Errore aggiornamento foto';
+      console.error(`Errore contatto ${i + 1}/${contacts.length} (${contact.name}):`, errorMessage);
+      report.errors.push({ contact: contact.name, reason: errorMessage });
       onProgress({ current: i + 1, total: contacts.length, message: `Elaborato ${i + 1}/${contacts.length}: errore aggiornamento` });
     }
   }

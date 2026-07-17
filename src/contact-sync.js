@@ -88,10 +88,13 @@ export const listContactsPreview = async ({ peopleService, whatsappSocket }) => 
       continue;
     }
 
-    const profileUrl = await Promise.race([
-      whatsappSocket.profilePictureUrl(jid, 'image'),
-      new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 10000))
-    ]).catch(() => null);
+    let profileUrl = null;
+    try {
+      profileUrl = await Promise.race([
+        whatsappSocket.profilePictureUrl(jid, 'image'),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 30000))
+      ]);
+    } catch {}
     const status = profileUrl ? 'photo-available' : 'no-photo';
     if (status === 'photo-available') {
       photosFound += 1;
@@ -144,10 +147,15 @@ export const syncContactProfilePhotos = async ({ peopleService, whatsappSocket }
       continue;
     }
 
-    const profileImageUrl = await Promise.race([
-      whatsappSocket.profilePictureUrl(jid, 'image'),
-      new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 10000))
-    ]).catch(() => null);
+    let profileImageUrl = null;
+    try {
+      profileImageUrl = await Promise.race([
+        whatsappSocket.profilePictureUrl(jid, 'image'),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 30000))
+      ]);
+    } catch (err) {
+      console.warn(`Timeout/n errore profilePictureUrl per ${contact.name} (${jid}): ${err.message}`);
+    }
     if (!profileImageUrl) {
       report.skippedNoPhoto += 1;
       onProgress({ current: i + 1, total: contacts.length, message: `Elaborato ${i + 1}/${contacts.length}: nessuna foto` });

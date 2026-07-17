@@ -133,7 +133,7 @@ app.get('/api/sync/progress', (_req, res) => {
   res.json(syncProgress || { current: 0, total: 0, message: 'Nessuna sincronizzazione in corso' });
 });
 
-app.get('*', (req, res) => {
+app.get('{*path}', (req, res) => {
   const indexPath = path.join(__dirname, '../dist/index.html');
   if (req.method === 'GET' && req.accepts('html') && res.sendFile) {
     return res.sendFile(indexPath);

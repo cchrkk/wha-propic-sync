@@ -1,3 +1,28 @@
+import { readFile, writeFile, unlink } from 'fs/promises';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const SYNC_STATE_PATH = path.join(__dirname, '../sync-state.json');
+
+const loadSyncState = async () => {
+  try {
+    const data = await readFile(SYNC_STATE_PATH, 'utf-8');
+    return JSON.parse(data);
+  } catch {
+    return null;
+  }
+};
+
+const saveSyncState = async (syncedIds) => {
+  await writeFile(SYNC_STATE_PATH, JSON.stringify({ syncedIds }));
+};
+
+const clearSyncState = async () => {
+  await unlink(SYNC_STATE_PATH).catch(() => {});
+};
+
 const getPrimaryPhone = (person) => {
   return person.phoneNumbers?.find((phone) => phone.value)?.value ?? null;
 };
@@ -86,18 +111,29 @@ export const listContactsPreview = async ({ peopleService, whatsappSocket }) => 
 
 export const syncContactProfilePhotos = async ({ peopleService, whatsappSocket }, onProgress = () => {}) => {
   const contacts = await loadAllContacts(peopleService);
+  const savedState = await loadSyncState();
+  const syncedIds = new Set(savedState?.syncedIds || []);
+  const resumed = syncedIds.size > 0;
+
   const report = {
     totalContacts: contacts.length,
     updated: 0,
     skippedNoPhoto: 0,
     skippedInvalidPhone: 0,
+    skippedAlreadySynced: resumed ? syncedIds.size : 0,
     errors: []
   };
 
-  onProgress({ current: 0, total: contacts.length, message: 'Inizializzazione sincronizzazione...' });
+  onProgress({ current: 0, total: contacts.length, message: resumed ? `Ripresa da ${syncedIds.size}/${contacts.length}...` : 'Inizializzazione sincronizzazione...' });
 
   for (let i = 0; i < contacts.length; i++) {
     const contact = contacts[i];
+
+    if (syncedIds.has(contact.resourceName)) {
+      onProgress({ current: i + 1, total: contacts.length, message: `Elaborato ${i + 1}/${contacts.length}: già sincronizzato` });
+      continue;
+    }
+
     const jid = formatWhatsAppJid(contact.phone);
     if (!jid) {
       report.skippedInvalidPhone += 1;
@@ -129,6 +165,8 @@ export const syncContactProfilePhotos = async ({ peopleService, whatsappSocket }
         requestBody: { photoBytes }
       });
       report.updated += 1;
+      syncedIds.add(contact.resourceName);
+      await saveSyncState([...syncedIds]);
       onProgress({ current: i + 1, total: contacts.length, message: `Elaborato ${i + 1}/${contacts.length}: aggiornato ${report.updated}` });
     } catch (error) {
       const errorMessage = error.name === 'AbortError'
@@ -140,6 +178,7 @@ export const syncContactProfilePhotos = async ({ peopleService, whatsappSocket }
     }
   }
 
+  await clearSyncState();
   onProgress({ current: contacts.length, total: contacts.length, message: 'Sincronizzazione completata' });
   return report;
 };

@@ -3,4 +3,5 @@ dist/
 .env
 whatsapp-session/
 tokens.json
+sync-state.json
 .DS_Store

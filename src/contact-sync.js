@@ -88,7 +88,10 @@ export const listContactsPreview = async ({ peopleService, whatsappSocket }) => 
       continue;
     }
 
-    const profileUrl = await whatsappSocket.profilePictureUrl(jid, 'image').catch(() => null);
+    const profileUrl = await Promise.race([
+      whatsappSocket.profilePictureUrl(jid, 'image'),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 10000))
+    ]).catch(() => null);
     const status = profileUrl ? 'photo-available' : 'no-photo';
     if (status === 'photo-available') {
       photosFound += 1;
@@ -141,7 +144,10 @@ export const syncContactProfilePhotos = async ({ peopleService, whatsappSocket }
       continue;
     }
 
-    const profileImageUrl = await whatsappSocket.profilePictureUrl(jid, 'image').catch(() => null);
+    const profileImageUrl = await Promise.race([
+      whatsappSocket.profilePictureUrl(jid, 'image'),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 10000))
+    ]).catch(() => null);
     if (!profileImageUrl) {
       report.skippedNoPhoto += 1;
       onProgress({ current: i + 1, total: contacts.length, message: `Elaborato ${i + 1}/${contacts.length}: nessuna foto` });
